@@ -1,6 +1,10 @@
 package com.project.sufeeds.model;
 
-import java.time.OffsetDateTime; // Use OffsetDateTime for TIMESTAMP WITH TIME ZONE
+import java.time.OffsetDateTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
+import java.time.format.FormatStyle;
 
 public class Post {
     private int postId;
@@ -8,7 +12,7 @@ public class Post {
     private int userId;
     private String postType;
     private String content;
-    private OffsetDateTime createdAt; // Use OffsetDateTime for TIMESTAMP WITH TIME ZONE
+    private OffsetDateTime createdAt;
 
     public Post(int postId, int topicId, int userId, String postType, String content, OffsetDateTime createdAt) {
         this.postId = postId;
@@ -27,7 +31,7 @@ public class Post {
     public String getContent() { return content; }
     public OffsetDateTime getCreatedAt() { return createdAt; }
 
-    // Setters (if needed)
+    // Setters
     public void setPostId(int postId) { this.postId = postId; }
     public void setTopicId(int topicId) { this.topicId = topicId; }
     public void setUserId(int userId) { this.userId = userId; }
@@ -35,9 +39,37 @@ public class Post {
     public void setContent(String content) { this.content = content; }
     public void setCreatedAt(OffsetDateTime createdAt) { this.createdAt = createdAt; }
 
+    /**
+     * Overrides the default toString method to provide a user-friendly representation
+     * of the Post object, including a formatted timestamp adjusted to the user's
+     * local time zone.
+     *
+     * @return A formatted string for display in the UI.
+     */
     @Override
     public String toString() {
-        // You might want to display the author's username here too for a more user-friendly output
-        return "[" + postType + "] " + content.substring(0, Math.min(content.length(), 50)) + "... (by User " + userId + ")";
+        String formattedDate = " (just now)"; // Default text if the timestamp is not available
+
+        if (createdAt != null) {
+            // Step 1: Get the system's default time zone (e.g., Africa/Nairobi for EAT).
+            ZoneId localZone = ZoneId.systemDefault();
+
+            // Step 2: Convert the UTC-based OffsetDateTime to a time zone-aware ZonedDateTime.
+            ZonedDateTime localTime = createdAt.atZoneSameInstant(localZone);
+
+            // Step 3: Create a formatter for a common, readable style (e.g., "8/20/25, 1:15 PM").
+            DateTimeFormatter formatter = DateTimeFormatter.ofLocalizedDateTime(FormatStyle.SHORT);
+
+            // Step 4: Format the date and time using the formatter.
+            formattedDate = " (at " + localTime.format(formatter) + ")";
+        }
+
+        // Combine all information into a single string for the JList.
+        return String.format("[%s] %s... - by User %d%s",
+                postType.toUpperCase(),
+                content.substring(0, Math.min(content.length(), 40)),
+                userId,
+                formattedDate
+        );
     }
 }

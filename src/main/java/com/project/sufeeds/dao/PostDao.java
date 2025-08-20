@@ -10,6 +10,13 @@ import java.util.List;
 
 public class PostDao {
 
+    /**
+     * Adds a new post to the database. The 'created_at' timestamp is handled
+     * automatically by the database.
+     *
+     * @param post The Post object to add (createdAt can be null).
+     * @return true if the insertion was successful, false otherwise.
+     */
     public boolean addPost(Post post) {
         String sql = "INSERT INTO tbl_posts(topic_id, user_id, post_type, content) VALUES(?, ?, ?, ?)";
         try (Connection conn = DatabaseManager.getConnection();
@@ -25,8 +32,6 @@ public class PostDao {
                 try (ResultSet generatedKeys = pstmt.getGeneratedKeys()) {
                     if (generatedKeys.next()) {
                         post.setPostId(generatedKeys.getInt(1));
-                        // Set the generated creation timestamp if needed
-                        post.setCreatedAt(generatedKeys.getTimestamp("created_at").toInstant().atOffset(ZoneOffset.UTC)); // Requires more import
                     }
                 }
                 return true;
@@ -37,9 +42,15 @@ public class PostDao {
         return false;
     }
 
+    /**
+     * Retrieves a list of all posts for a given topic, ordered by the most recent.
+     * It correctly fetches the 'created_at' timestamp as an OffsetDateTime object.
+     *
+     * @param topicId The ID of the topic to get posts for.
+     * @return A list of Post objects.
+     */
     public List<Post> getPostsByTopic(int topicId) {
         List<Post> posts = new ArrayList<>();
-        // Join with tbl_users to get the username for display
         String sql = "SELECT p.post_id, p.topic_id, p.user_id, p.post_type, p.content, p.created_at, u.username " +
                 "FROM tbl_posts p JOIN tbl_users u ON p.user_id = u.user_id " +
                 "WHERE p.topic_id = ? ORDER BY p.created_at DESC";
@@ -50,8 +61,10 @@ public class PostDao {
             ResultSet rs = pstmt.executeQuery();
 
             while (rs.next()) {
-                // For 'created_at' which is TIMESTAMP WITH TIME ZONE
+                // Key Step: Use getObject with the target class to let the JDBC driver
+                // handle the conversion from SQL TIMESTAMP WITH TIME ZONE to Java's OffsetDateTime.
                 OffsetDateTime createdAt = rs.getObject("created_at", OffsetDateTime.class);
+
                 posts.add(new Post(
                         rs.getInt("post_id"),
                         rs.getInt("topic_id"),
@@ -67,6 +80,12 @@ public class PostDao {
         return posts;
     }
 
+    /**
+     * Updates an existing post in the database.
+     *
+     * @param post The Post object with updated information.
+     * @return true if the update was successful, false otherwise.
+     */
     public boolean updatePost(Post post) {
         String sql = "UPDATE tbl_posts SET post_type = ?, content = ? WHERE post_id = ?";
         try (Connection conn = DatabaseManager.getConnection();
@@ -84,6 +103,12 @@ public class PostDao {
         return false;
     }
 
+    /**
+     * Deletes a post from the database by its ID.
+     *
+     * @param postId The ID of the post to delete.
+     * @return true if the deletion was successful, false otherwise.
+     */
     public boolean deletePost(int postId) {
         String sql = "DELETE FROM tbl_posts WHERE post_id = ?";
         try (Connection conn = DatabaseManager.getConnection();
