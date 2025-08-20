@@ -15,75 +15,63 @@ public class LoginFrame extends JFrame {
     public LoginFrame() {
         userDao = new UserDao();
         setTitle("SU Feeds Login");
-        // We no longer set a fixed size. We'll let the components decide.
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         initComponents();
-        pack(); // This makes the window fit the preferred size of its components
-        setLocationRelativeTo(null); // Center the frame after packing
-        setMinimumSize(getSize()); // Prevent resizing smaller than the packed size
+        pack();
+        setLocationRelativeTo(null);
+        setMinimumSize(getSize());
     }
 
     private void initComponents() {
-        // Use BorderLayout for the main frame's content pane
         setLayout(new BorderLayout(10, 10));
 
-        // --- Center Panel for the Form (using GridBagLayout) ---
         JPanel formPanel = new JPanel(new GridBagLayout());
-        formPanel.setBorder(new EmptyBorder(20, 20, 20, 20)); // Add padding around the form
+        formPanel.setBorder(new EmptyBorder(20, 20, 20, 20));
         GridBagConstraints gbc = new GridBagConstraints();
 
-        // Configure constraints
-        gbc.insets = new Insets(5, 5, 5, 5); // Padding between components
+        gbc.insets = new Insets(5, 5, 5, 5);
         gbc.fill = GridBagConstraints.HORIZONTAL;
 
-        // Username Label
         gbc.gridx = 0;
         gbc.gridy = 0;
-        gbc.anchor = GridBagConstraints.LINE_END; // Right-align labels
+        gbc.anchor = GridBagConstraints.LINE_END;
         formPanel.add(new JLabel("Username:"), gbc);
 
-        // Username Text Field
         gbc.gridx = 1;
         gbc.gridy = 0;
-        gbc.weightx = 1.0; // Allow field to grow horizontally
-        userField = new JTextField(15); // Set a preferred size
+        gbc.weightx = 1.0;
+        userField = new JTextField(15);
         formPanel.add(userField, gbc);
 
-        // Password Label
         gbc.gridx = 0;
         gbc.gridy = 1;
-        gbc.weightx = 0; // Reset weight
+        gbc.weightx = 0;
         formPanel.add(new JLabel("Password:"), gbc);
 
-        // Password Text Field
         gbc.gridx = 1;
         gbc.gridy = 1;
         gbc.weightx = 1.0;
         passField = new JPasswordField(15);
         formPanel.add(passField, gbc);
 
-        // Copyright Label
         gbc.gridx = 0;
         gbc.gridy = 2;
-        gbc.gridwidth = 2; // Span both columns
-        gbc.anchor = GridBagConstraints.CENTER; // Center the label
+        gbc.gridwidth = 2;
+        gbc.anchor = GridBagConstraints.CENTER;
         gbc.fill = GridBagConstraints.NONE;
         JLabel copyright = new JLabel("© 2025 SU Feeds");
         copyright.setFont(new Font("Serif", Font.PLAIN, 10));
         formPanel.add(copyright, gbc);
 
-        // --- Bottom Panel for the Buttons ---
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 10, 10));
         JButton loginButton = new JButton("Login");
         JButton registerButton = new JButton("Register");
         buttonPanel.add(loginButton);
         buttonPanel.add(registerButton);
 
-        // Add panels to the frame
         add(formPanel, BorderLayout.CENTER);
         add(buttonPanel, BorderLayout.SOUTH);
 
-        // Action Listeners
         loginButton.addActionListener(e -> handleLogin());
         registerButton.addActionListener(e -> handleRegister());
     }
@@ -99,9 +87,13 @@ public class LoginFrame extends JFrame {
 
         User user = userDao.login(username, password);
         if (user != null) {
-            // Success! Open the main application window
-            SwingUtilities.invokeLater(() -> new MainFrame(user).setVisible(true));
-            this.dispose(); // Close the login frame
+            // **KEY CHANGE IS HERE**
+            // The dispose() call is now inside the invokeLater block.
+            // This guarantees the MainFrame is visible before the LoginFrame is closed.
+            SwingUtilities.invokeLater(() -> {
+                new MainFrame(user).setVisible(true);
+                this.dispose(); // This is the corrected placement
+            });
         } else {
             JOptionPane.showMessageDialog(this, "Invalid username or password.", "Login Failed", JOptionPane.ERROR_MESSAGE);
         }
@@ -118,7 +110,7 @@ public class LoginFrame extends JFrame {
 
         if (userDao.register(username, password)) {
             JOptionPane.showMessageDialog(this, "Registration successful! You can now log in.");
-            userField.setText(""); // Clear fields after successful registration
+            userField.setText("");
             passField.setText("");
         } else {
             JOptionPane.showMessageDialog(this, "Registration failed. The username might already be taken.", "Registration Error", JOptionPane.ERROR_MESSAGE);
