@@ -20,20 +20,18 @@ public class MainFrame extends JFrame {
     private void initComponents() {
         JTabbedPane tabbedPane = new JTabbedPane();
 
-        // 1. Create instances of all panels
         CoursePanel coursePanel = new CoursePanel(currentUser);
         TopicPanel topicPanel = new TopicPanel(currentUser);
         PostPanel postPanel = new PostPanel(currentUser);
 
-        // **KEY CHANGE**: Register the listeners to connect the panels
-        // This tells topicPanel and postPanel to listen for events from coursePanel
-        coursePanel.addCourseCreationListener(topicPanel);
-        coursePanel.addCourseCreationListener(postPanel);
+        // **KEY CHANGE**: Register the new, correct listener.
+        // This tells TopicPanel and PostPanel to listen for ENROLLMENT changes from CoursePanel.
+        coursePanel.addEnrollmentListener(topicPanel);
+        coursePanel.addEnrollmentListener(postPanel);
 
-        // This tells postPanel to listen for events from topicPanel
+        // This listener remains correct: PostPanel listens for new topics from TopicPanel.
         topicPanel.addTopicCreationListener(postPanel);
 
-        // 2. Add the panels to the tabbed pane
         tabbedPane.addTab("Courses", coursePanel);
         tabbedPane.addTab("Topics", topicPanel);
         tabbedPane.addTab("Posts", postPanel);
