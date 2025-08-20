@@ -13,7 +13,6 @@ import javax.swing.border.EmptyBorder;
 import java.awt.*;
 import java.util.List;
 
-// **KEY CHANGE**: Implement both listener interfaces
 public class PostPanel extends BasePanel implements CourseCreationListener, TopicCreationListener {
     private PostDao postDao;
     private TopicDao topicDao;
@@ -37,27 +36,28 @@ public class PostPanel extends BasePanel implements CourseCreationListener, Topi
     }
 
     private void setupPostUI() {
-        // ... (UI setup is the same)
         JPanel contentPanel = new JPanel(new BorderLayout(10, 10));
         contentPanel.setBorder(new EmptyBorder(10, 10, 10, 10));
 
+        // Top Panel: Course and Topic Selection
         JPanel selectionPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
         selectionPanel.add(new JLabel("Course:"));
-        courseSelectComboBox = new JComboBox<>();
-        refreshCourseSelectionComboBox();
+        courseSelectComboBox = new JComboBox<>(); // Component is created
         courseSelectComboBox.addActionListener(e -> refreshTopicSelectionComboBox());
         selectionPanel.add(courseSelectComboBox);
 
         selectionPanel.add(new JLabel("Topic:"));
-        topicSelectComboBox = new JComboBox<>();
+        topicSelectComboBox = new JComboBox<>(); // Component is created
         topicSelectComboBox.addActionListener(e -> refreshPostList());
         selectionPanel.add(topicSelectComboBox);
 
         contentPanel.add(selectionPanel, BorderLayout.NORTH);
 
+        // Center Panel: Add Post and List Posts
         JSplitPane splitPane = new JSplitPane(JSplitPane.VERTICAL_SPLIT);
         splitPane.setResizeWeight(0.5);
 
+        // Top Split Pane: Add New Post
         JPanel addPostPanel = new JPanel(new BorderLayout(5,5));
         addPostPanel.setBorder(BorderFactory.createTitledBorder("Add New Post"));
         JPanel inputPanel = new JPanel(new GridLayout(2, 2, 5, 5));
@@ -79,9 +79,10 @@ public class PostPanel extends BasePanel implements CourseCreationListener, Topi
         addPostPanel.add(buttonPanel, BorderLayout.SOUTH);
         splitPane.setTopComponent(addPostPanel);
 
+        // Bottom Split Pane: View Posts
         JPanel viewPostsPanel = new JPanel(new BorderLayout());
         viewPostsPanel.setBorder(BorderFactory.createTitledBorder("Posts for Selected Topic"));
-        postListModel = new DefaultListModel<>();
+        postListModel = new DefaultListModel<>(); // Component is created
         postList = new JList<>(postListModel);
         viewPostsPanel.add(new JScrollPane(postList), BorderLayout.CENTER);
         splitPane.setBottomComponent(viewPostsPanel);
@@ -89,7 +90,9 @@ public class PostPanel extends BasePanel implements CourseCreationListener, Topi
         contentPanel.add(splitPane, BorderLayout.CENTER);
         add(contentPanel, BorderLayout.CENTER);
 
-        refreshTopicSelectionComboBox();
+        // **KEY FIX**: Move the initial data loading call to the END of the method.
+        // This ensures all components above have been initialized before they are used.
+        refreshCourseSelectionComboBox();
     }
 
     private void addPost() {
@@ -125,7 +128,6 @@ public class PostPanel extends BasePanel implements CourseCreationListener, Topi
         }
     }
 
-    // Public method to refresh the course dropdown
     public void refreshCourseSelectionComboBox() {
         courseSelectComboBox.removeAllItems();
         List<Course> enrolledCourses = courseDao.getEnrolledCoursesForUser(currentUser.getUserId());
@@ -134,12 +136,12 @@ public class PostPanel extends BasePanel implements CourseCreationListener, Topi
         }
         if (!enrolledCourses.isEmpty()) {
             courseSelectComboBox.setSelectedIndex(0);
+        } else {
+            // If there are no courses, explicitly refresh the (now empty) topic list
+            refreshTopicSelectionComboBox();
         }
-        // Important: After refreshing courses, we must also refresh the topics for the newly selected course
-        refreshTopicSelectionComboBox();
     }
 
-    // Public method to refresh the topic dropdown
     public void refreshTopicSelectionComboBox() {
         topicSelectComboBox.removeAllItems();
         Course selectedCourse = (Course) courseSelectComboBox.getSelectedItem();
@@ -149,22 +151,23 @@ public class PostPanel extends BasePanel implements CourseCreationListener, Topi
                 topicSelectComboBox.addItem(topic);
             }
         }
-        // After refreshing topics, we must refresh the posts for the newly selected topic
-        refreshPostList();
+        if (topicSelectComboBox.getItemCount() > 0) {
+            topicSelectComboBox.setSelectedIndex(0);
+        } else {
+            // If there are no topics, explicitly refresh the (now empty) post list
+            refreshPostList();
+        }
     }
 
-    // **KEY CHANGE**: Implementation for the CourseCreationListener interface
     @Override
     public void courseAdded(Course newCourse) {
         System.out.println("PostPanel detected a new course was added: " + newCourse.getCourseName());
         refreshCourseSelectionComboBox();
     }
 
-    // **KEY CHANGE**: Implementation for the TopicCreationListener interface
     @Override
     public void topicAdded(Topic newTopic) {
         System.out.println("PostPanel detected a new topic was added: " + newTopic.getTitle());
-        // We only need to refresh topics if the new topic belongs to the currently selected course
         Course selectedCourse = (Course) courseSelectComboBox.getSelectedItem();
         if (selectedCourse != null && selectedCourse.getCourseId() == newTopic.getCourseId()) {
             refreshTopicSelectionComboBox();

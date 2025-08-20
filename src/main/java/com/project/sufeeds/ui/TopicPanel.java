@@ -12,7 +12,6 @@ import java.awt.*;
 import java.util.ArrayList;
 import java.util.List;
 
-// **KEY CHANGE**: Implement the listener interface
 public class TopicPanel extends BasePanel implements CourseCreationListener {
     private TopicDao topicDao;
     private CourseDao courseDao;
@@ -25,7 +24,6 @@ public class TopicPanel extends BasePanel implements CourseCreationListener {
     private JList<Topic> topicList;
     private DefaultListModel<Topic> topicListModel;
 
-    // List to hold subscribers (the PostPanel)
     private final List<TopicCreationListener> topicCreationListeners = new ArrayList<>();
 
     public TopicPanel(User user) {
@@ -36,27 +34,27 @@ public class TopicPanel extends BasePanel implements CourseCreationListener {
         setupTopicUI();
     }
 
-    // Method to allow PostPanel to subscribe
     public void addTopicCreationListener(TopicCreationListener listener) {
         topicCreationListeners.add(listener);
     }
 
     private void setupTopicUI() {
-        // ... (UI setup is the same)
         JPanel contentPanel = new JPanel(new BorderLayout(10, 10));
         contentPanel.setBorder(new EmptyBorder(10, 10, 10, 10));
 
+        // Top Panel: Course Selection
         JPanel topSelectionPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
         topSelectionPanel.add(new JLabel("Select Enrolled Course:"));
-        courseSelectionComboBox = new JComboBox<>();
-        refreshCourseSelectionComboBox();
+        courseSelectionComboBox = new JComboBox<>(); // Component is created
         courseSelectionComboBox.addActionListener(e -> refreshTopicList());
         topSelectionPanel.add(courseSelectionComboBox);
         contentPanel.add(topSelectionPanel, BorderLayout.NORTH);
 
+        // Center Panel: Add Topic and List Topics
         JSplitPane splitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT);
         splitPane.setResizeWeight(0.5);
 
+        // Left: Add Topic Section
         JPanel addTopicPanel = new JPanel(new BorderLayout(5,5));
         addTopicPanel.setBorder(BorderFactory.createTitledBorder("Add New Topic"));
         JPanel inputPanel = new JPanel(new GridLayout(4, 2, 5, 5));
@@ -80,9 +78,10 @@ public class TopicPanel extends BasePanel implements CourseCreationListener {
         addTopicPanel.add(buttonPanel, BorderLayout.SOUTH);
         splitPane.setLeftComponent(addTopicPanel);
 
+        // Right: List Topics Section
         JPanel listTopicPanel = new JPanel(new BorderLayout());
         listTopicPanel.setBorder(BorderFactory.createTitledBorder("Topics for Selected Course"));
-        topicListModel = new DefaultListModel<>();
+        topicListModel = new DefaultListModel<>(); // Component is created
         topicList = new JList<>(topicListModel);
         listTopicPanel.add(new JScrollPane(topicList), BorderLayout.CENTER);
         splitPane.setRightComponent(listTopicPanel);
@@ -90,7 +89,9 @@ public class TopicPanel extends BasePanel implements CourseCreationListener {
         contentPanel.add(splitPane, BorderLayout.CENTER);
         add(contentPanel, BorderLayout.CENTER);
 
-        refreshTopicList();
+        // **KEY FIX**: Move the initial data loading calls to the END of the method.
+        // This ensures all components above have been initialized before they are used.
+        refreshCourseSelectionComboBox();
     }
 
     private void addTopic() {
@@ -117,9 +118,8 @@ public class TopicPanel extends BasePanel implements CourseCreationListener {
                 weekNumberField.setText("");
                 topicTitleField.setText("");
                 topicDescriptionArea.setText("");
-                refreshTopicList(); // Refresh this panel's own list
+                refreshTopicList();
 
-                // **KEY CHANGE**: Notify all listeners that a new topic was added
                 for (TopicCreationListener listener : topicCreationListeners) {
                     listener.topicAdded(newTopic);
                 }
@@ -142,20 +142,22 @@ public class TopicPanel extends BasePanel implements CourseCreationListener {
         }
     }
 
-    // This method is now public to be accessible by the listener implementation
     public void refreshCourseSelectionComboBox() {
         courseSelectionComboBox.removeAllItems();
         List<Course> enrolledCourses = courseDao.getEnrolledCoursesForUser(currentUser.getUserId());
         for (Course course : enrolledCourses) {
             courseSelectionComboBox.addItem(course);
         }
+        // Selecting an item here will automatically trigger the action listener,
+        // which in turn calls refreshTopicList().
         if (!enrolledCourses.isEmpty()) {
             courseSelectionComboBox.setSelectedIndex(0);
+        } else {
+            // If there are no courses, explicitly clear the topic list
+            refreshTopicList();
         }
     }
 
-    // **KEY CHANGE**: This is the implementation of the listener method.
-    // It will be called by CoursePanel when a new course is added.
     @Override
     public void courseAdded(Course newCourse) {
         System.out.println("TopicPanel detected a new course was added: " + newCourse.getCourseName());
