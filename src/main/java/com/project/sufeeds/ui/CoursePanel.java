@@ -7,6 +7,7 @@ import com.project.sufeeds.model.User;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
+import java.util.ArrayList;
 import java.util.List;
 
 public class CoursePanel extends BasePanel {
@@ -19,18 +20,26 @@ public class CoursePanel extends BasePanel {
     private DefaultListModel<Course> enrolledCoursesListModel;
     private JList<Course> enrolledCoursesList;
 
+    // List to hold subscribers (listeners)
+    private final List<CourseCreationListener> courseCreationListeners = new ArrayList<>();
+
     public CoursePanel(User user) {
-        super(); // Call BasePanel constructor
+        super();
         this.currentUser = user;
         this.courseDao = new CourseDao();
         setupCourseUI();
+    }
+
+    // Method to allow other panels to subscribe
+    public void addCourseCreationListener(CourseCreationListener listener) {
+        courseCreationListeners.add(listener);
     }
 
     private void setupCourseUI() {
         JPanel contentPanel = new JPanel(new BorderLayout(10, 10));
         contentPanel.setBorder(new EmptyBorder(10, 10, 10, 10));
 
-        // Add Course Section
+        // ... (rest of the UI setup is the same)
         JPanel addCoursePanel = new JPanel(new GridLayout(3, 2, 5, 5));
         addCoursePanel.setBorder(BorderFactory.createTitledBorder("Add New Course"));
         addCoursePanel.add(new JLabel("Course Code:"));
@@ -43,7 +52,6 @@ public class CoursePanel extends BasePanel {
         addCourseButton.addActionListener(e -> addCourse());
         addCoursePanel.add(addCourseButton);
 
-        // Enroll in Course Section
         JPanel enrollPanel = new JPanel(new GridLayout(2, 2, 5, 5));
         enrollPanel.setBorder(BorderFactory.createTitledBorder("Enroll in Course"));
         enrollPanel.add(new JLabel("Select Course:"));
@@ -54,7 +62,6 @@ public class CoursePanel extends BasePanel {
         enrollButton.addActionListener(e -> enrollInCourse());
         enrollPanel.add(enrollButton);
 
-        // Enrolled Courses List
         JPanel enrolledListPanel = new JPanel(new BorderLayout(5,5));
         enrolledListPanel.setBorder(BorderFactory.createTitledBorder("Your Enrolled Courses"));
         enrolledCoursesListModel = new DefaultListModel<>();
@@ -62,7 +69,6 @@ public class CoursePanel extends BasePanel {
         enrolledListPanel.add(new JScrollPane(enrolledCoursesList), BorderLayout.CENTER);
         refreshEnrolledCoursesList();
 
-        // Combine panels
         JPanel topPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 10));
         topPanel.add(addCoursePanel);
         topPanel.add(enrollPanel);
@@ -70,7 +76,6 @@ public class CoursePanel extends BasePanel {
         contentPanel.add(topPanel, BorderLayout.NORTH);
         contentPanel.add(enrolledListPanel, BorderLayout.CENTER);
 
-        // Add contentPanel to the main BasePanel's center
         add(contentPanel, BorderLayout.CENTER);
     }
 
@@ -88,7 +93,12 @@ public class CoursePanel extends BasePanel {
             JOptionPane.showMessageDialog(this, "Course '" + newCourse.getCourseName() + "' added successfully!");
             courseCodeField.setText("");
             courseNameField.setText("");
-            refreshAllCoursesComboBox(); // Update combobox with new course
+            refreshAllCoursesComboBox(); // Update this panel's own combobox
+
+            // **KEY CHANGE**: Notify all listeners that a new course was added
+            for (CourseCreationListener listener : courseCreationListeners) {
+                listener.courseAdded(newCourse);
+            }
         } else {
             JOptionPane.showMessageDialog(this, "Failed to add course. It might already exist.", "Database Error", JOptionPane.ERROR_MESSAGE);
         }

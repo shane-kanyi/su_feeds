@@ -13,10 +13,11 @@ import javax.swing.border.EmptyBorder;
 import java.awt.*;
 import java.util.List;
 
-public class PostPanel extends BasePanel {
+// **KEY CHANGE**: Implement both listener interfaces
+public class PostPanel extends BasePanel implements CourseCreationListener, TopicCreationListener {
     private PostDao postDao;
     private TopicDao topicDao;
-    private CourseDao courseDao; // To get enrolled courses
+    private CourseDao courseDao;
     private User currentUser;
 
     private JComboBox<Course> courseSelectComboBox;
@@ -36,10 +37,10 @@ public class PostPanel extends BasePanel {
     }
 
     private void setupPostUI() {
+        // ... (UI setup is the same)
         JPanel contentPanel = new JPanel(new BorderLayout(10, 10));
         contentPanel.setBorder(new EmptyBorder(10, 10, 10, 10));
 
-        // Top Panel: Course and Topic Selection
         JPanel selectionPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
         selectionPanel.add(new JLabel("Course:"));
         courseSelectComboBox = new JComboBox<>();
@@ -54,11 +55,9 @@ public class PostPanel extends BasePanel {
 
         contentPanel.add(selectionPanel, BorderLayout.NORTH);
 
-        // Center Panel: Add Post and List Posts
         JSplitPane splitPane = new JSplitPane(JSplitPane.VERTICAL_SPLIT);
-        splitPane.setResizeWeight(0.5); // Divide space equally
+        splitPane.setResizeWeight(0.5);
 
-        // Top Split Pane: Add New Post
         JPanel addPostPanel = new JPanel(new BorderLayout(5,5));
         addPostPanel.setBorder(BorderFactory.createTitledBorder("Add New Post"));
         JPanel inputPanel = new JPanel(new GridLayout(2, 2, 5, 5));
@@ -80,7 +79,6 @@ public class PostPanel extends BasePanel {
         addPostPanel.add(buttonPanel, BorderLayout.SOUTH);
         splitPane.setTopComponent(addPostPanel);
 
-        // Bottom Split Pane: View Posts
         JPanel viewPostsPanel = new JPanel(new BorderLayout());
         viewPostsPanel.setBorder(BorderFactory.createTitledBorder("Posts for Selected Topic"));
         postListModel = new DefaultListModel<>();
@@ -91,31 +89,7 @@ public class PostPanel extends BasePanel {
         contentPanel.add(splitPane, BorderLayout.CENTER);
         add(contentPanel, BorderLayout.CENTER);
 
-        // Initial loads
-        refreshTopicSelectionComboBox(); // This will also trigger refreshPostList
-    }
-
-    private void refreshCourseSelectionComboBox() {
-        courseSelectComboBox.removeAllItems();
-        List<Course> enrolledCourses = courseDao.getEnrolledCoursesForUser(currentUser.getUserId());
-        for (Course course : enrolledCourses) {
-            courseSelectComboBox.addItem(course);
-        }
-        if (!enrolledCourses.isEmpty()) {
-            courseSelectComboBox.setSelectedIndex(0);
-        }
-    }
-
-    private void refreshTopicSelectionComboBox() {
-        topicSelectComboBox.removeAllItems();
-        Course selectedCourse = (Course) courseSelectComboBox.getSelectedItem();
-        if (selectedCourse != null) {
-            List<Topic> topics = topicDao.getTopicsByCourse(selectedCourse.getCourseId());
-            for (Topic topic : topics) {
-                topicSelectComboBox.addItem(topic);
-            }
-        }
-        refreshPostList(); // Refresh posts when topic selection changes
+        refreshTopicSelectionComboBox();
     }
 
     private void addPost() {
@@ -124,15 +98,12 @@ public class PostPanel extends BasePanel {
             JOptionPane.showMessageDialog(this, "Please select a topic first.", "Input Error", JOptionPane.WARNING_MESSAGE);
             return;
         }
-
         String postType = (String) postTypeComboBox.getSelectedItem();
         String content = postContentArea.getText().trim();
-
         if (content.isEmpty()) {
             JOptionPane.showMessageDialog(this, "Post content cannot be empty.", "Input Error", JOptionPane.WARNING_MESSAGE);
             return;
         }
-
         Post newPost = new Post(0, selectedTopic.getTopicId(), currentUser.getUserId(), postType, content, null);
         if (postDao.addPost(newPost)) {
             JOptionPane.showMessageDialog(this, "Post added successfully!");
@@ -151,6 +122,52 @@ public class PostPanel extends BasePanel {
             for (Post post : posts) {
                 postListModel.addElement(post);
             }
+        }
+    }
+
+    // Public method to refresh the course dropdown
+    public void refreshCourseSelectionComboBox() {
+        courseSelectComboBox.removeAllItems();
+        List<Course> enrolledCourses = courseDao.getEnrolledCoursesForUser(currentUser.getUserId());
+        for (Course course : enrolledCourses) {
+            courseSelectComboBox.addItem(course);
+        }
+        if (!enrolledCourses.isEmpty()) {
+            courseSelectComboBox.setSelectedIndex(0);
+        }
+        // Important: After refreshing courses, we must also refresh the topics for the newly selected course
+        refreshTopicSelectionComboBox();
+    }
+
+    // Public method to refresh the topic dropdown
+    public void refreshTopicSelectionComboBox() {
+        topicSelectComboBox.removeAllItems();
+        Course selectedCourse = (Course) courseSelectComboBox.getSelectedItem();
+        if (selectedCourse != null) {
+            List<Topic> topics = topicDao.getTopicsByCourse(selectedCourse.getCourseId());
+            for (Topic topic : topics) {
+                topicSelectComboBox.addItem(topic);
+            }
+        }
+        // After refreshing topics, we must refresh the posts for the newly selected topic
+        refreshPostList();
+    }
+
+    // **KEY CHANGE**: Implementation for the CourseCreationListener interface
+    @Override
+    public void courseAdded(Course newCourse) {
+        System.out.println("PostPanel detected a new course was added: " + newCourse.getCourseName());
+        refreshCourseSelectionComboBox();
+    }
+
+    // **KEY CHANGE**: Implementation for the TopicCreationListener interface
+    @Override
+    public void topicAdded(Topic newTopic) {
+        System.out.println("PostPanel detected a new topic was added: " + newTopic.getTitle());
+        // We only need to refresh topics if the new topic belongs to the currently selected course
+        Course selectedCourse = (Course) courseSelectComboBox.getSelectedItem();
+        if (selectedCourse != null && selectedCourse.getCourseId() == newTopic.getCourseId()) {
+            refreshTopicSelectionComboBox();
         }
     }
 }

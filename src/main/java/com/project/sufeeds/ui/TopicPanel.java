@@ -9,11 +9,13 @@ import com.project.sufeeds.model.User;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
+import java.util.ArrayList;
 import java.util.List;
 
-public class TopicPanel extends BasePanel {
+// **KEY CHANGE**: Implement the listener interface
+public class TopicPanel extends BasePanel implements CourseCreationListener {
     private TopicDao topicDao;
-    private CourseDao courseDao; // Needed to get enrolled courses
+    private CourseDao courseDao;
     private User currentUser;
 
     private JComboBox<Course> courseSelectionComboBox;
@@ -23,6 +25,9 @@ public class TopicPanel extends BasePanel {
     private JList<Topic> topicList;
     private DefaultListModel<Topic> topicListModel;
 
+    // List to hold subscribers (the PostPanel)
+    private final List<TopicCreationListener> topicCreationListeners = new ArrayList<>();
+
     public TopicPanel(User user) {
         super();
         this.currentUser = user;
@@ -31,11 +36,16 @@ public class TopicPanel extends BasePanel {
         setupTopicUI();
     }
 
+    // Method to allow PostPanel to subscribe
+    public void addTopicCreationListener(TopicCreationListener listener) {
+        topicCreationListeners.add(listener);
+    }
+
     private void setupTopicUI() {
+        // ... (UI setup is the same)
         JPanel contentPanel = new JPanel(new BorderLayout(10, 10));
         contentPanel.setBorder(new EmptyBorder(10, 10, 10, 10));
 
-        // Top Panel: Course Selection
         JPanel topSelectionPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
         topSelectionPanel.add(new JLabel("Select Enrolled Course:"));
         courseSelectionComboBox = new JComboBox<>();
@@ -44,11 +54,9 @@ public class TopicPanel extends BasePanel {
         topSelectionPanel.add(courseSelectionComboBox);
         contentPanel.add(topSelectionPanel, BorderLayout.NORTH);
 
-        // Center Panel: Add Topic and List Topics
         JSplitPane splitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT);
-        splitPane.setResizeWeight(0.5); // Divide space equally
+        splitPane.setResizeWeight(0.5);
 
-        // Left: Add Topic Section
         JPanel addTopicPanel = new JPanel(new BorderLayout(5,5));
         addTopicPanel.setBorder(BorderFactory.createTitledBorder("Add New Topic"));
         JPanel inputPanel = new JPanel(new GridLayout(4, 2, 5, 5));
@@ -72,7 +80,6 @@ public class TopicPanel extends BasePanel {
         addTopicPanel.add(buttonPanel, BorderLayout.SOUTH);
         splitPane.setLeftComponent(addTopicPanel);
 
-        // Right: List Topics Section
         JPanel listTopicPanel = new JPanel(new BorderLayout());
         listTopicPanel.setBorder(BorderFactory.createTitledBorder("Topics for Selected Course"));
         topicListModel = new DefaultListModel<>();
@@ -83,19 +90,7 @@ public class TopicPanel extends BasePanel {
         contentPanel.add(splitPane, BorderLayout.CENTER);
         add(contentPanel, BorderLayout.CENTER);
 
-        // Initial load
         refreshTopicList();
-    }
-
-    private void refreshCourseSelectionComboBox() {
-        courseSelectionComboBox.removeAllItems();
-        List<Course> enrolledCourses = courseDao.getEnrolledCoursesForUser(currentUser.getUserId());
-        for (Course course : enrolledCourses) {
-            courseSelectionComboBox.addItem(course);
-        }
-        if (!enrolledCourses.isEmpty()) {
-            courseSelectionComboBox.setSelectedIndex(0);
-        }
     }
 
     private void addTopic() {
@@ -122,7 +117,12 @@ public class TopicPanel extends BasePanel {
                 weekNumberField.setText("");
                 topicTitleField.setText("");
                 topicDescriptionArea.setText("");
-                refreshTopicList();
+                refreshTopicList(); // Refresh this panel's own list
+
+                // **KEY CHANGE**: Notify all listeners that a new topic was added
+                for (TopicCreationListener listener : topicCreationListeners) {
+                    listener.topicAdded(newTopic);
+                }
             } else {
                 JOptionPane.showMessageDialog(this, "Failed to add topic.", "Database Error", JOptionPane.ERROR_MESSAGE);
             }
@@ -140,5 +140,25 @@ public class TopicPanel extends BasePanel {
                 topicListModel.addElement(topic);
             }
         }
+    }
+
+    // This method is now public to be accessible by the listener implementation
+    public void refreshCourseSelectionComboBox() {
+        courseSelectionComboBox.removeAllItems();
+        List<Course> enrolledCourses = courseDao.getEnrolledCoursesForUser(currentUser.getUserId());
+        for (Course course : enrolledCourses) {
+            courseSelectionComboBox.addItem(course);
+        }
+        if (!enrolledCourses.isEmpty()) {
+            courseSelectionComboBox.setSelectedIndex(0);
+        }
+    }
+
+    // **KEY CHANGE**: This is the implementation of the listener method.
+    // It will be called by CoursePanel when a new course is added.
+    @Override
+    public void courseAdded(Course newCourse) {
+        System.out.println("TopicPanel detected a new course was added: " + newCourse.getCourseName());
+        refreshCourseSelectionComboBox();
     }
 }
